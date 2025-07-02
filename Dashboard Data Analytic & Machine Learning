@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CSV Viewer Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background: #f8f8f8; padding: 20px; }
     h1 { text-align: center; }
     .container { display: flex; flex-direction: column; gap: 30px; }
-    .upload-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .upload-section, .chart-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
     input[type="file"] { margin-top: 10px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
     th, td { padding: 8px 10px; border: 1px solid #ddd; }
@@ -18,10 +19,11 @@
     .pagination button { margin: 0 3px; padding: 5px 10px; border: none; background-color: #f0f0f0; border-radius: 4px; cursor: pointer; }
     .pagination button.active { background-color: #007bff; color: white; }
     .pagination button:disabled { background-color: #ccc; cursor: default; }
+    canvas { max-width: 100%; margin-top: 20px; }
   </style>
 </head>
 <body>
-  <h1>Upload & View CSV: Forms and Tasks (with Pagination)</h1>
+  <h1>Upload & View CSV: Forms and Tasks (with Pagination + Chart)</h1>
   <div class="container">
     <div class="upload-section">
       <label><strong>Upload Forms CSV:</strong></label>
@@ -30,17 +32,30 @@
       <div class="pagination" id="formsPagination"></div>
     </div>
 
+    <div class="chart-section">
+      <h2>Forms Analytics</h2>
+      <canvas id="formsStatusChart"></canvas>
+      <p id="formsOverdueCount"></p>
+    </div>
+
     <div class="upload-section">
       <label><strong>Upload Tasks CSV:</strong></label>
       <input type="file" id="tasksFile" accept=".csv">
       <div id="tasksTable"></div>
       <div class="pagination" id="tasksPagination"></div>
     </div>
+
+    <div class="chart-section">
+      <h2>Tasks Analytics</h2>
+      <canvas id="tasksPriorityChart"></canvas>
+      <canvas id="tasksCauseChart"></canvas>
+    </div>
   </div>
 
   <script>
     let rowsPerPage = 20;
     let formsData = [], tasksData = [];
+    let formsChart, priorityChart, causeChart;
 
     function renderPaginatedTable(data, targetId, paginationId, page) {
       if (!data || data.length === 0) return;
@@ -77,7 +92,6 @@
       target.innerHTML = '';
       target.appendChild(table);
 
-      // Pagination
       const pageCount = Math.ceil((data.length - 1) / rowsPerPage);
       const pagination = document.getElementById(paginationId);
       pagination.innerHTML = '';
@@ -145,11 +159,20 @@
         const overdue = row[overdueIndex];
 
         statusCount[status] = (statusCount[status] || 0) + 1;
-        if (overdue.toLowerCase() === "true") overdueTrue++;
+        if (typeof overdue === 'string' && overdue.toLowerCase() === "true") overdueTrue++;
       }
 
-      console.log("Forms Status Count:", statusCount);
-      console.log("Overdue Forms:", overdueTrue);
+      if (formsChart) formsChart.destroy();
+      formsChart = new Chart(document.getElementById("formsStatusChart"), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(statusCount),
+          datasets: [{ label: 'Forms per Status', data: Object.values(statusCount), backgroundColor: '#007bff' }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+
+      document.getElementById("formsOverdueCount").innerText = `Jumlah overdue: ${overdueTrue}`;
     }
 
     function renderTasksAnalytics(data) {
@@ -169,8 +192,26 @@
         causeCount[cause] = (causeCount[cause] || 0) + 1;
       }
 
-      console.log("Tasks Priority Count:", priorityCount);
-      console.log("Tasks Cause Count:", causeCount);
+      if (priorityChart) priorityChart.destroy();
+      if (causeChart) causeChart.destroy();
+
+      priorityChart = new Chart(document.getElementById("tasksPriorityChart"), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(priorityCount),
+          datasets: [{ label: 'Tasks per Priority', data: Object.values(priorityCount), backgroundColor: '#28a745' }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+
+      causeChart = new Chart(document.getElementById("tasksCauseChart"), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(causeCount),
+          datasets: [{ label: 'Tasks per Cause', data: Object.values(causeCount), backgroundColor: '#ffc107' }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
     }
   </script>
 </body>
