@@ -1,218 +1,247 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CSV Viewer Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; background: #f8f8f8; padding: 20px; }
-    h1 { text-align: center; }
-    .container { display: flex; flex-direction: column; gap: 30px; }
-    .upload-section, .chart-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
-    input[type="file"] { margin-top: 10px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
-    th, td { padding: 8px 10px; border: 1px solid #ddd; }
-    th { background-color: #007bff; color: white; }
-    .pagination { margin-top: 10px; text-align: center; }
-    .pagination button { margin: 0 3px; padding: 5px 10px; border: none; background-color: #f0f0f0; border-radius: 4px; cursor: pointer; }
-    .pagination button.active { background-color: #007bff; color: white; }
-    .pagination button:disabled { background-color: #ccc; cursor: default; }
-    canvas { max-width: 100%; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <h1>Upload & View CSV: Forms and Tasks (with Pagination + Chart)</h1>
-  <div class="container">
-    <div class="upload-section">
-      <label><strong>Upload Forms CSV:</strong></label>
-      <input type="file" id="formsFile" accept=".csv">
-      <div id="formsTable"></div>
-      <div class="pagination" id="formsPagination"></div>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Monitoring Dashboard</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <!-- Header Section -->
+      <div class="dashboard-header">
+        <div class="header-content">
+          <div class="header-left">
+            <div class="header-icon">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="header-text">
+              <h1 class="dashboard-title">Project Monitoring Dashboard</h1>
+              <p class="dashboard-subtitle">Monitoring progres proyek digitalisasi tahun berjalan</p>
+            </div>
+          </div>
+
+          <div class="header-right">
+            <button
+              class="debug-btn"
+              onclick="showDebugInfo()"
+              style="margin-right: 12px; padding: 11px 18px; border: 1px solid var(--border-color); background: white; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 600; display: none"
+              id="debugBtn"
+            >
+              <i class="fas fa-bug"></i> Debug
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Cards - Horizontal -->
+      <div class="stats-grid">
+        <div class="stat-card stat-card-blue">
+          <div class="stat-icon">
+            <i class="fas fa-project-diagram"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="totalProjects">-</div>
+            <div class="stat-label">Total Proyek</div>
+          </div>
+        </div>
+
+        <div class="stat-card stat-card-orange">
+          <div class="stat-icon">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="inProgressProjects">-</div>
+            <div class="stat-label">In Progress</div>
+          </div>
+        </div>
+
+        <div class="stat-card stat-card-green">
+          <div class="stat-icon">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="completedProjects">-</div>
+            <div class="stat-label">Completed</div>
+          </div>
+        </div>
+
+        <div class="stat-card stat-card-purple">
+          <div class="stat-icon">
+            <i class="fas fa-calendar-alt"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="totalMandays">-</div>
+            <div class="stat-label">Est. Mandays</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content Grid - 3 Columns -->
+      <div class="main-content">
+        <!-- Department Distribution (Left Column) - Clickable legends -->
+        <div class="chart-card clickable-chart">
+          <div class="chart-header">
+            <h3><i class="fas fa-building"></i> By Department</h3>
+            <span class="chart-period">Active</span>
+          </div>
+          <div class="chart-body">
+            <canvas id="departmentPieChart"></canvas>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item" onclick="showDepartmentDetail('All')">
+              <span class="legend-dot" style="background: linear-gradient(135deg, #8b5cf6, #3b82f6, #10b981)"></span>
+              <span class="legend-label">All Departments</span>
+              <span class="legend-value" id="allCount">-</span>
+            </div>
+            <div class="legend-item" onclick="showDepartmentDetail('Riset')">
+              <span class="legend-dot" style="background: #8b5cf6"></span>
+              <span class="legend-label">Riset</span>
+              <span class="legend-value" id="risetCount">-</span>
+            </div>
+            <div class="legend-item" onclick="showDepartmentDetail('Digitalisasi')">
+              <span class="legend-dot" style="background: #3b82f6"></span>
+              <span class="legend-label">Digitalisasi</span>
+              <span class="legend-value" id="digitalisasiCount">-</span>
+            </div>
+            <div class="legend-item" onclick="showDepartmentDetail('System Development')">
+              <span class="legend-dot" style="background: #10b981"></span>
+              <span class="legend-label">System Dev</span>
+              <span class="legend-value" id="systemCount">-</span>
+            </div>
+          </div>
+          <div class="click-hint"><i class="fas fa-info-circle"></i> Klik legend untuk detail</div>
+        </div>
+
+        <!-- Project Details (Middle Column) -->
+        <div class="detail-section-card">
+          <div class="detail-header">
+            <h3><i class="fas fa-list-alt"></i> Project Details</h3>
+            <span class="detail-period">Recent</span>
+          </div>
+          <div class="detail-body" id="projectDetailsList">
+            <div class="loading-state">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Loading projects...</span>
+            </div>
+          </div>
+          <button class="view-all-btn" onclick="showDetailModal()">View All Projects <i class="fas fa-arrow-right"></i></button>
+        </div>
+
+        <!-- ToDo Card (Right Column) -->
+        <div class="todo-card">
+          <div class="todo-header">
+            <div class="todo-title">
+              <i class="fas fa-tasks"></i>
+              <span>To-Do List</span>
+            </div>
+            <div class="todo-filters">
+              <select id="departmentFilter" class="filter-select" onchange="applyFilters()">
+                <option value="all">All Departments</option>
+                <option value="Riset">Riset</option>
+                <option value="Digitalisasi">Digitalisasi</option>
+                <option value="System Development">System Development</option>
+              </select>
+              <select id="dueDateFilter" class="filter-select" onchange="applyFilters()">
+                <option value="all">All Tasks</option>
+                <option value="today">Today</option>
+                <option value="tomorrow">Tomorrow</option>
+                <option value="this-week">This Week</option>
+                <option value="overdue">Overdue</option>
+              </select>
+            </div>
+          </div>
+          <div class="todo-count-badge"><span id="todoCount">-</span> tasks pending</div>
+          <div class="todo-list" id="todoList">
+            <div class="loading-state">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Loading data from Google Sheets...</span>
+            </div>
+          </div>
+          <button class="view-all-btn" onclick="showTodoModal()">View All Tasks <i class="fas fa-arrow-right"></i></button>
+        </div>
+      </div>
     </div>
 
-    <div class="chart-section">
-      <h2>Forms Analytics</h2>
-      <canvas id="formsStatusChart"></canvas>
-      <p id="formsOverdueCount"></p>
+    <!-- Project Details Modal -->
+    <div id="detailModal" class="modal">
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h2><i class="fas fa-list-alt"></i> All Projects</h2>
+          <button class="modal-close" onclick="closeDetailModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="detail-filters"></div>
+          <div id="detailModalContent">
+            <div class="loading-state">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Loading projects...</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="upload-section">
-      <label><strong>Upload Tasks CSV:</strong></label>
-      <input type="file" id="tasksFile" accept=".csv">
-      <div id="tasksTable"></div>
-      <div class="pagination" id="tasksPagination"></div>
+    <!-- ToDo Modal -->
+    <div id="todoModal" class="modal">
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h2><i class="fas fa-tasks"></i> Task Management</h2>
+          <button class="modal-close" onclick="closeTodoModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="todo-tabs">
+            <button class="todo-tab active" data-tab="pending"><i class="fas fa-calendar-check"></i> Pending <span class="tab-count" id="pendingTabCount">(0)</span></button>
+            <button class="todo-tab" data-tab="progress"><i class="fas fa-spinner"></i> In Progress <span class="tab-count" id="progressTabCount">(0)</span></button>
+            <button class="todo-tab" data-tab="done"><i class="fas fa-check-circle"></i> Completed <span class="tab-count" id="doneTabCount">(0)</span></button>
+          </div>
+
+          <div class="todo-tab-content">
+            <div class="todo-tab-pane active" id="tabPending">
+              <div class="loading-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Loading tasks...</span>
+              </div>
+            </div>
+
+            <div class="todo-tab-pane" id="tabProgress">
+              <div class="loading-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Loading tasks...</span>
+              </div>
+            </div>
+
+            <div class="todo-tab-pane" id="tabDone">
+              <div class="loading-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Loading tasks...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="chart-section">
-      <h2>Tasks Analytics</h2>
-      <canvas id="tasksPriorityChart"></canvas>
-      <canvas id="tasksCauseChart"></canvas>
-    </div>
-  </div>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-  <script>
-    let rowsPerPage = 20;
-    let formsData = [], tasksData = [];
-    let formsChart, priorityChart, causeChart;
-
-    function renderPaginatedTable(data, targetId, paginationId, page) {
-      if (!data || data.length === 0) return;
-      const start = (page - 1) * rowsPerPage + 1;
-      const end = Math.min(start + rowsPerPage, data.length);
-      const headers = data[0];
-      const rows = data.slice(start, end);
-
-      const table = document.createElement("table");
-      const thead = document.createElement("thead");
-      const tbody = document.createElement("tbody");
-
-      const headerRow = document.createElement("tr");
-      headers.forEach(header => {
-        const th = document.createElement("th");
-        th.textContent = header;
-        headerRow.appendChild(th);
-      });
-      thead.appendChild(headerRow);
-
-      rows.forEach(row => {
-        const tr = document.createElement("tr");
-        row.forEach(cell => {
-          const td = document.createElement("td");
-          td.textContent = cell;
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
-
-      table.appendChild(thead);
-      table.appendChild(tbody);
-      const target = document.getElementById(targetId);
-      target.innerHTML = '';
-      target.appendChild(table);
-
-      const pageCount = Math.ceil((data.length - 1) / rowsPerPage);
-      const pagination = document.getElementById(paginationId);
-      pagination.innerHTML = '';
-
-      const backButton = document.createElement("button");
-      backButton.textContent = "Back";
-      backButton.disabled = page === 1;
-      backButton.onclick = () => renderPaginatedTable(data, targetId, paginationId, page - 1);
-      pagination.appendChild(backButton);
-
-      let startPage = Math.max(1, page - 4);
-      let endPage = Math.min(startPage + 9, pageCount);
-      if (endPage - startPage < 9) startPage = Math.max(1, endPage - 9);
-
-      for (let i = startPage; i <= endPage; i++) {
-        const btn = document.createElement("button");
-        btn.textContent = i;
-        if (i === page) btn.classList.add("active");
-        btn.onclick = () => renderPaginatedTable(data, targetId, paginationId, i);
-        pagination.appendChild(btn);
-      }
-
-      const nextButton = document.createElement("button");
-      nextButton.textContent = "Next";
-      nextButton.disabled = page === pageCount;
-      nextButton.onclick = () => renderPaginatedTable(data, targetId, paginationId, page + 1);
-      pagination.appendChild(nextButton);
-    }
-
-    document.getElementById("formsFile").addEventListener("change", function (e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      Papa.parse(file, {
-        complete: function(results) {
-          formsData = results.data;
-          renderPaginatedTable(formsData, "formsTable", "formsPagination", 1);
-          renderFormsAnalytics(formsData);
-        }
-      });
-    });
-
-    document.getElementById("tasksFile").addEventListener("change", function (e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      Papa.parse(file, {
-        complete: function(results) {
-          tasksData = results.data;
-          renderPaginatedTable(tasksData, "tasksTable", "tasksPagination", 1);
-          renderTasksAnalytics(tasksData);
-        }
-      });
-    });
-
-    function renderFormsAnalytics(data) {
-      const headers = data[0];
-      const statusIndex = headers.indexOf("status");
-      const overdueIndex = headers.indexOf("overdue");
-
-      const statusCount = {};
-      let overdueTrue = 0;
-
-      for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        const status = row[statusIndex];
-        const overdue = row[overdueIndex];
-
-        statusCount[status] = (statusCount[status] || 0) + 1;
-        if (typeof overdue === 'string' && overdue.toLowerCase() === "true") overdueTrue++;
-      }
-
-      if (formsChart) formsChart.destroy();
-      formsChart = new Chart(document.getElementById("formsStatusChart"), {
-        type: 'bar',
-        data: {
-          labels: Object.keys(statusCount),
-          datasets: [{ label: 'Forms per Status', data: Object.values(statusCount), backgroundColor: '#007bff' }]
-        },
-        options: { responsive: true, plugins: { legend: { display: false } } }
-      });
-
-      document.getElementById("formsOverdueCount").innerText = `Jumlah overdue: ${overdueTrue}`;
-    }
-
-    function renderTasksAnalytics(data) {
-      const headers = data[0];
-      const priorityIndex = headers.indexOf("priority");
-      const causeIndex = headers.indexOf("cause");
-
-      const priorityCount = {};
-      const causeCount = {};
-
-      for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        const priority = row[priorityIndex];
-        const cause = row[causeIndex];
-
-        priorityCount[priority] = (priorityCount[priority] || 0) + 1;
-        causeCount[cause] = (causeCount[cause] || 0) + 1;
-      }
-
-      if (priorityChart) priorityChart.destroy();
-      if (causeChart) causeChart.destroy();
-
-      priorityChart = new Chart(document.getElementById("tasksPriorityChart"), {
-        type: 'bar',
-        data: {
-          labels: Object.keys(priorityCount),
-          datasets: [{ label: 'Tasks per Priority', data: Object.values(priorityCount), backgroundColor: '#28a745' }]
-        },
-        options: { responsive: true, plugins: { legend: { display: false } } }
-      });
-
-      causeChart = new Chart(document.getElementById("tasksCauseChart"), {
-        type: 'bar',
-        data: {
-          labels: Object.keys(causeCount),
-          datasets: [{ label: 'Tasks per Cause', data: Object.values(causeCount), backgroundColor: '#ffc107' }]
-        },
-        options: { responsive: true, plugins: { legend: { display: false } } }
-      });
-    }
-  </script>
-</body>
+    <!-- Custom JS -->
+    <script src="script.js"></script>
+  </body>
 </html>
